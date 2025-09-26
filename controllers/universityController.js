@@ -1,6 +1,7 @@
 const University = require("../models/University");
 const bcrypt = require("bcrypt");
 const Faculty = require("../models/Faculty");
+const { sendMail } = require("../utils/mailservice");
 
 // Register a new university
 const registerUniversity = async (req, res) => {
@@ -51,6 +52,25 @@ const loginUniversity = async (req, res) => {
     res.status(200).json({ message: "Login successful", universityId: university.aisheCode });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+//send mail to university
+exports.register = async (req, res) => {
+  try {
+    const { name, aisheCode, email, password } = req.body;
+    const university = await University.create({ name, aisheCode, email, password });
+
+    await sendMail({
+      to: email,
+      subject: "EduTrack - University Account Created",
+      message: `Your university account has been created successfully.\nAISHE Code: ${aisheCode}\nPassword: ${password}`,
+      name
+    });
+
+    res.status(201).json({ message: "University created and email sent", university });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 

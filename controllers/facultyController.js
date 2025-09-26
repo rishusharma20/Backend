@@ -1,5 +1,6 @@
 const Faculty = require("../models/Faculty");
 const Student = require("../models/Student");
+const { sendMail } = require("../utils/mailservice");
 
 // Faculty Registration
 const registerFaculty = async (req, res) => {
@@ -56,6 +57,25 @@ const loginFaculty = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: "Error logging in faculty", error: error.message });
     }
+};
+
+//send email to faculty
+exports.register = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const faculty = await Faculty.create({ name, email, password });
+
+    await sendMail({
+      to: email,
+      subject: "EduTrack - Faculty Account Created",
+      message: `Your faculty account has been created successfully.\nEmail: ${email}\nPassword: ${password}`,
+      name
+    });
+
+    res.status(201).json({ message: "Faculty created and email sent", faculty });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 

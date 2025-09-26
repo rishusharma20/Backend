@@ -1,34 +1,32 @@
-// mailService.js
+// mailservice.js
 const nodemailer = require("nodemailer");
+require("dotenv").config();
 
 async function sendMail({ to, subject, message, name }) {
-  // 1. Create a test account automatically
-  const testAccount = await nodemailer.createTestAccount();
-
-  // 2. Create transporter using Ethereal SMTP
+  // 1. Create transporter with your real email provider
   const transporter = nodemailer.createTransport({
-    host: testAccount.smtp.host,
-    port: testAccount.smtp.port,
-    secure: testAccount.smtp.secure, // true for 465, false for other ports
+    service: "gmail", // or use host/port if different SMTP
     auth: {
-      user: testAccount.user,
-      pass: testAccount.pass
+      user: process.env.EMAIL_USER, // your email
+      pass: process.env.EMAIL_PASS  // your app password
     }
   });
 
-  // 3. Define mail options
+  // 2. Define mail options
   const mailOptions = {
-    from: `"SIH Test" <${testAccount.user}>`, // sender
-    to,                                       // recipient (dynamic)
+    from: `"EduTrack" <${process.env.EMAIL_USER}>`,
+    to,
     subject,
-    text: message,                            // plain text
-    html: `<p>Hello ${name || "User"},</p><p>${message}</p>`
+    text: message,
+    html: `
+      <p>Hello ${name || "User"},</p>
+      <p>${message}</p>
+    `
   };
 
-  // 4. Send email
+  // 3. Send email
   const info = await transporter.sendMail(mailOptions);
-
-  console.log("Mail sent! Preview URL:", nodemailer.getTestMessageUrl(info));
+  console.log("✅ Mail sent:", info.messageId);
   return info;
 }
 

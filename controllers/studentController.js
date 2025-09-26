@@ -1,4 +1,7 @@
 const Student = require("../models/Student");
+const { sendMail } = require("../utils/mailservice");
+const cloudinary = require("../utils/cloudinary");
+const upload = require("../utils/upload"); // multer
 
 // Register Student
 const registerStudent = async (req, res) => {
@@ -58,6 +61,77 @@ const loginStudent = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: "Error logging in student", error: error.message });
     }
+};
+
+//send email to student
+exports.register = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    const student = await Student.create({ name, email, password });
+
+    // send email
+    await sendMail({
+      to: email,
+      subject: "EduTrack - Student Account Created",
+      message: `Your student account has been created successfully.\nEmail: ${email}\nPassword: ${password}`,
+      name
+    });
+
+    res.status(201).json({ message: "Student created and email sent", student });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Register + upload photo & certificates
+exports.register = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    // Upload profile photo (if provided)
+    let photoUrl = null;
+    if (req.files && req.files.photo) {
+      const result = await cloudinary.uploader.upload_stream(
+        { folder: "EduTrack/students/photos" },
+        (error, result) => {
+          if (error) throw error;
+          photoUrl = result.secure_url;
+        }
+      );
+      req.files.photo[0].stream.pipe(result);
+    }
+
+    // Upload certificates (multiple files)
+    let certificates = [];
+    if (req.files && req.files.certificates) {
+      for (const file of req.files.certificates) {
+        const result = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { folder: "EduTrack/students/certificates" },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          file.stream.pipe(stream);
+        });
+        certificates.push(result.secure_url);
+      }
+    }
+
+    // Save student in DB
+    const student = await Student.create({
+      name,
+      email,
+      password,
+      photo: photoUrl,
+      certificates,
+    });
+
+    res.status(201).json({ message: "Student created", student });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 module.exports = { registerStudent, loginStudent };
